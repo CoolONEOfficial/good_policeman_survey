@@ -13,7 +13,7 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  ProgressHUD _progressHUD = ProgressHUD(
+  final ProgressHUD _progress = ProgressHUD(
     loading: false,
     backgroundColor: Colors.black12,
     color: Colors.white,
@@ -69,7 +69,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                         child: RaisedButton(
                                           child: Text("Вход"),
                                           onPressed: () async {
-                                            _progressHUD.state.show();
+                                            _progress.state.show();
 
                                             var keys = (await dbRef
                                                         .child("keys")
@@ -107,7 +107,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                                     Text("Ключа нет в базе"),
                                               ));
 
-                                              _progressHUD.state.dismiss();
+                                              _progress.state.dismiss();
                                             }
                                           },
                                         ),
@@ -120,7 +120,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           ],
                         ),
                       ),
-                      _progressHUD
+                      _progress
                     ],
                   ),
                 ),
