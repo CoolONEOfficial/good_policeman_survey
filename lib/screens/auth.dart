@@ -29,84 +29,106 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   @override
-  Widget build(BuildContext ctx) => Scaffold(
-        body: Builder(
-          builder: (ctx) => SafeArea(
-                child: Stack(
-                  children: [
-                    Align(
-                      alignment: Alignment.center,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.max,
-                        children: <Widget>[
-                          Image.asset(
-                            'assets/icons/icon.png',
-                            width: 200,
-                            height: 260,
-                          ),
-                          Container(
-                            width: 300,
-                            child: Column(
-                              children: <Widget>[
-                                Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: TextField(
-                                    controller: keyController,
-                                    decoration: InputDecoration(
-                                      hintText: "Ключ регистрации",
-                                    ),
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: RaisedButton(
-                                    child: Text("Вход"),
-                                    onPressed: () async {
-                                      _progressHUD.state.show();
-
-                                      var keys =
-                                          (await dbRef.child("keys").once())
-                                                  .value ??
-                                              [];
-
-                                      if (keys.contains(keyController.text)) {
-                                        Navigator.of(ctx)
-                                            .pushNamedAndRemoveUntil(
-                                          '/survey',
-                                          (Route<dynamic> route) => false,
-                                        );
-
-                                        dbRef
-                                            .child('uids')
-                                            .child(((await dbRef
-                                                    .child('uids')
-                                                    .once())
-                                                ?.value
-                                                ?.length ?? 0).toString())
-                                            .set(await FlutterUdid
-                                                .consistentUdid);
-                                      } else {
-                                        Scaffold.of(ctx).showSnackBar(SnackBar(
-                                          content: Text("Ключа нет в базе"),
-                                        ));
-                                      }
-
-                                      _progressHUD.state.dismiss();
-                                    },
-                                  ),
-                                ),
-                              ],
+  Widget build(BuildContext ctx) => Theme(
+        data: ThemeData(
+          canvasColor: Colors.blue,
+        ),
+        child: Scaffold(
+          body: Builder(
+            builder: (ctx) => SafeArea(
+                  child: Stack(
+                    children: [
+                      Align(
+                        alignment: Alignment.center,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.max,
+                          children: <Widget>[
+                            Image.asset(
+                              'assets/icons/icon.png',
+                              width: 200,
+                              height: 260,
                             ),
-                          ),
-                        ],
+                            Container(
+                              width: 320,
+                              child: Card(
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                                  child: Column(
+                                    children: <Widget>[
+                                      Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: TextField(
+                                          controller: keyController,
+                                          decoration: InputDecoration(
+                                            hintText: "Ключ регистрации",
+                                          ),
+                                        ),
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.all(8.0),
+                                        child: RaisedButton(
+                                          child: Text("Вход"),
+                                          onPressed: () async {
+                                            _progressHUD.state.show();
+
+                                            var keys = (await dbRef
+                                                        .child("keys")
+                                                        .once())
+                                                    .value ??
+                                                [];
+
+                                            final keyId = keys
+                                                .indexOf(keyController.text);
+                                            if (keyId != -1) {
+                                              await dbRef
+                                                  .child('uids')
+                                                  .child(((await dbRef
+                                                                  .child('uids')
+                                                                  .once())
+                                                              ?.value
+                                                              ?.length ??
+                                                          0)
+                                                      .toString())
+                                                  .set(await FlutterUdid
+                                                      .consistentUdid);
+
+                                              await dbRef
+                                                  .child("keys")
+                                                  .update({keyId.toString(): null});
+
+                                              Navigator.of(ctx)
+                                                  .pushNamedAndRemoveUntil(
+                                                '/survey',
+                                                    (Route<dynamic> route) => false,
+                                              );
+                                            } else {
+                                              Scaffold.of(ctx)
+                                                  .showSnackBar(SnackBar(
+                                                content:
+                                                    Text("Ключа нет в базе"),
+                                              ));
+
+                                              _progressHUD.state.dismiss();
+                                            }
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    _progressHUD
-                  ],
+                      _progressHUD
+                    ],
+                  ),
                 ),
-              ),
+          ),
         ),
       );
 }
