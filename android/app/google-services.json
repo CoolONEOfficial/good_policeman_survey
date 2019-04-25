@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "1052789274513",
+    "firebase_url": "https://good-policeman-survey.firebaseio.com",
+    "project_id": "good-policeman-survey",
+    "storage_bucket": "good-policeman-survey.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1052789274513:android:c9eac6025a9d9d8d",
+        "android_client_info": {
+          "package_name": "ru.coolone.good_policeman_survey"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1052789274513-esga620ah7dp5n7afi2dl0056mo9mm17.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDSZ0EgfdTm7WH0q1qCf4o15MxYN-wAqzk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1052789274513-esga620ah7dp5n7afi2dl0056mo9mm17.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
