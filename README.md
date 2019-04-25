@@ -1,5 +1,7 @@
 # good_policeman_survey
 
+[![Build Status](https://travis-ci.org/CoolONEOfficial/good_policeman_survey.svg?branch=master)](https://travis-ci.org/CoolONEOfficial/good_policeman_survey)
+
 Volunteers blank app
 
 ## Getting Started
