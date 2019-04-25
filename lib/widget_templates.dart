@@ -43,6 +43,12 @@ class WidgetTemplates {
   static Widget buildErrorNotification(BuildContext ctx, String error) =>
       _buildIconNotification(ctx, error, Icons.error);
 
+  static Image buildLogo() => Image.asset(
+    'assets/icons/icon.png',
+    width: 200,
+    height: 260,
+  );
+
   static Widget buildFutureBuilder<T>(
     BuildContext ctx, {
     @required Future future,

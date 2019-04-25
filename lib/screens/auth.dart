@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:good_policeman_survey/main.dart';
+import 'package:good_policeman_survey/widget_templates.dart';
 import 'package:progress_hud/progress_hud.dart';
 import 'package:flutter_udid/flutter_udid.dart';
 
@@ -45,11 +46,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           mainAxisSize: MainAxisSize.max,
                           children: <Widget>[
-                            Image.asset(
-                              'assets/icons/icon.png',
-                              width: 200,
-                              height: 260,
-                            ),
+                            WidgetTemplates.buildLogo(),
                             Container(
                               width: 320,
                               child: Card(
@@ -92,8 +89,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                                               ?.length ??
                                                           0)
                                                       .toString())
-                                                  .set(await FlutterUdid
-                                                      .consistentUdid);
+                                                  .set(duid);
 
                                               await dbRef
                                                   .child("keys")
