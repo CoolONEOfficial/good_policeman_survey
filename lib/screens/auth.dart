@@ -90,14 +90,13 @@ class _AuthScreenState extends State<AuthScreen> {
                                                       .toString())
                                                   .set(duid);
 
-                                              await dbRef
-                                                  .child("keys")
-                                                  .update({keyId.toString(): null});
+                                              await dbRef.child("keys").update(
+                                                  {keyId.toString(): null});
 
                                               Navigator.of(ctx)
                                                   .pushNamedAndRemoveUntil(
                                                 '/survey',
-                                                    (Route<dynamic> route) => false,
+                                                (Route<dynamic> route) => false,
                                               );
                                             } else {
                                               Scaffold.of(ctx)

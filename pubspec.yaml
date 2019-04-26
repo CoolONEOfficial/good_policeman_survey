@@ -11,7 +11,10 @@ dependencies:
     sdk: flutter
 
   cupertino_icons: ^0.1.2
+  geolocator: ^4.0.1
   progress_hud: ^1.1.0
+  image_picker: ^0.6.0+1
+  random_string: ^0.0.2
   flutter_udid: ^1.0.0
   firebase_core: ^0.3.4
   firebase_analytics: ^2.1.1+3

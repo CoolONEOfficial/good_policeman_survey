@@ -1,8 +1,13 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:good_policeman_survey/main.dart';
 import 'package:progress_hud/progress_hud.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:random_string/random_string.dart';
+import 'package:geolocator/geolocator.dart';
 
 enum Area {
   None,
@@ -16,14 +21,34 @@ enum Area {
   Sormovsk,
 }
 
-final StreamController<Area> _onArea = StreamController<Area>.broadcast();
+final StreamController _onArea = StreamController<Area>.broadcast(),
+    _onSelfie = StreamController<File>.broadcast();
 
 class SurveyModel {
-  Area area = Area.None;
+  final String areaName;
+  final String selfieUrl;
+  final Position position;
+
+  const SurveyModel({
+    this.areaName,
+    this.selfieUrl,
+    this.position,
+  });
+
+  toJson() => {
+        "area": areaName,
+        "selfie": selfieUrl,
+        "position": {
+          "lat": position.latitude,
+          "lng": position.longitude,
+        }
+      };
 }
 
 class SurveyScreen extends StatelessWidget {
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
   final _formKey = GlobalKey<FormState>();
+
   final ProgressHUD _progress = ProgressHUD(
     loading: false,
     backgroundColor: Colors.black12,
@@ -32,7 +57,8 @@ class SurveyScreen extends StatelessWidget {
     borderRadius: 5.0,
     text: 'Загрузка...',
   );
-  final _model = SurveyModel();
+  File _selfieImage;
+  Area _area = Area.None;
   final _areas = [
     "Не указано",
     "Автозаводский",
@@ -58,7 +84,29 @@ class SurveyScreen extends StatelessWidget {
     if (_validateAndSave()) {
       _progress.state.show();
 
-      // TODO: send
+      final url = await (await storageRef
+              .child("survey/" + duid + '/' + randomAlphaNumeric(10))
+              .putFile(_selfieImage)
+              .onComplete)
+          .ref
+          .getDownloadURL();
+
+      dbRef.child("survey").push().set(
+            SurveyModel(
+              areaName: _areas[_area.index],
+              selfieUrl: url,
+              position: await Geolocator()
+                  .getCurrentPosition(desiredAccuracy: LocationAccuracy.best),
+            ).toJson(),
+          );
+
+      _scaffoldKey.currentState.showSnackBar(SnackBar(
+        content: Text("Анкета успешно отправлена"),
+      ));
+
+      _formKey.currentState.reset();
+
+      _progress.state.dismiss();
     }
   }
 
@@ -77,7 +125,7 @@ class SurveyScreen extends StatelessWidget {
                     child: DropdownButtonFormField(
                       validator: (value) =>
                           value == 0 ? "Выберите район" : null,
-                      value: _model.area.index,
+                      value: _area?.index,
                       items: _areas
                           .map<DropdownMenuItem>((val) => DropdownMenuItem(
                                 value: _areas.indexOf(val),
@@ -85,8 +133,8 @@ class SurveyScreen extends StatelessWidget {
                               ))
                           .toList(),
                       onChanged: (areaId) {
-                        _model.area = Area.values[areaId];
-                        _onArea.add(_model.area);
+                        _area = Area.values[areaId];
+                        _onArea.add(_area);
                       },
                     ),
                   ),
@@ -95,35 +143,95 @@ class SurveyScreen extends StatelessWidget {
         ),
       );
 
+  Widget _selfieInput(
+    BuildContext ctx,
+  ) =>
+      Center(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(15.0, 15.0, 15.0, 0.0),
+          child: StreamBuilder(
+              stream: _onSelfie.stream,
+              builder: (ctx, _) => CircleAvatar(
+                    radius: 60,
+                    backgroundColor:
+                        _selfieImage != null ? Colors.transparent : Colors.blue,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.max,
+                      children: _selfieImage != null
+                          ? [
+                              IconButton(
+                                icon: Icon(Icons.delete),
+                                onPressed: () {
+                                  _selfieImage = null;
+                                  _onSelfie.add(_selfieImage);
+                                },
+                              ),
+                              Expanded(
+                                child: Container(),
+                              ),
+                              IconButton(
+                                icon: Icon(Icons.refresh),
+                                onPressed: () async {
+                                  _selfieImage = await ImagePicker.pickImage(
+                                      source: ImageSource.camera);
+                                  _onSelfie.add(_selfieImage);
+                                },
+                              ),
+                            ]
+                          : [
+                              IconButton(
+                                icon: Icon(
+                                  Icons.add,
+                                  size: 30,
+                                ),
+                                onPressed: () async {
+                                  _selfieImage = await ImagePicker.pickImage(
+                                      source: ImageSource.camera);
+                                  _onSelfie.add(_selfieImage);
+                                },
+                              ),
+                              Text(
+                                "Добавить\nселфи",
+                                textAlign: TextAlign.center,
+                              )
+                            ],
+                    ),
+                    backgroundImage: _selfieImage != null
+                        ? FileImage(
+                            _selfieImage,
+                          )
+                        : null,
+                  )),
+        ),
+      );
+
   @override
-  Widget build(BuildContext ctx) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Добавление анкеты"),
-        actions: <Widget>[
-          IconButton(
-            icon: Icon(Icons.send),
-            onPressed: () => _validateAndSubmit(),
-          ),
-        ],
-      ),
-      body: Stack(
-        children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Form(
+  Widget build(BuildContext ctx) => Scaffold(
+        key: _scaffoldKey,
+        appBar: AppBar(
+          title: Text("Добавление анкеты"),
+          actions: <Widget>[
+            IconButton(
+              icon: Icon(Icons.send),
+              onPressed: () => _validateAndSubmit(),
+            ),
+          ],
+        ),
+        body: Stack(
+          children: <Widget>[
+            Form(
               key: _formKey,
               child: ListView(
                 shrinkWrap: true,
                 children: <Widget>[
                   _areaInput(ctx),
+                  _selfieInput(ctx),
                 ],
               ),
             ),
-          ),
-          _progress
-        ],
-      ),
-    );
-  }
+            _progress
+          ],
+        ),
+      );
 }
