@@ -80,7 +80,7 @@ class SurveyScreen extends StatelessWidget {
     return false;
   }
 
-  void _validateAndSubmit() async {
+  void _validateAndSubmit(BuildContext ctx) async {
     if (_validateAndSave()) {
       _progress.state.show();
 
@@ -91,22 +91,31 @@ class SurveyScreen extends StatelessWidget {
           .ref
           .getDownloadURL();
 
-      dbRef.child("survey").push().set(
-            SurveyModel(
-              areaName: _areas[_area.index],
-              selfieUrl: url,
-              position: await Geolocator()
-                  .getCurrentPosition(desiredAccuracy: LocationAccuracy.best),
-            ).toJson(),
-          );
+      final position = await Geolocator()
+          .getCurrentPosition(desiredAccuracy: LocationAccuracy.best);
 
-      _scaffoldKey.currentState.showSnackBar(SnackBar(
-        content: Text("Анкета успешно отправлена"),
-      ));
+      if (position != null) {
+        await dbRef.child("survey").push().set(
+              SurveyModel(
+                areaName: _areas[_area.index],
+                selfieUrl: url,
+                position: position,
+              ).toJson(),
+            );
 
-      _formKey.currentState.reset();
+        Navigator.of(ctx).pushNamedAndRemoveUntil(
+          '/total',
+          (Route<dynamic> route) => false,
+        );
+      } else {
+        _scaffoldKey.currentState.showSnackBar(
+          SnackBar(
+            content: Text("Не получилось получить местоположение устройства"),
+          ),
+        );
 
-      _progress.state.dismiss();
+        _progress.state.dismiss();
+      }
     }
   }
 
@@ -214,7 +223,7 @@ class SurveyScreen extends StatelessWidget {
           actions: <Widget>[
             IconButton(
               icon: Icon(Icons.send),
-              onPressed: () => _validateAndSubmit(),
+              onPressed: () => _validateAndSubmit(ctx),
             ),
           ],
         ),

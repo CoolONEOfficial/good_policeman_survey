@@ -6,6 +6,7 @@ import 'package:flutter_udid/flutter_udid.dart';
 import 'package:good_policeman_survey/screens/auth.dart';
 import 'package:good_policeman_survey/screens/splash.dart';
 import 'package:good_policeman_survey/screens/survey.dart';
+import 'package:good_policeman_survey/screens/total.dart';
 import 'package:good_policeman_survey/widget_templates.dart';
 
 void main() => runApp(MyApp());
@@ -19,6 +20,7 @@ class MyApp extends StatelessWidget {
           '/': (ctx) => SplashScreen(),
           '/auth': (ctx) => AuthScreen(),
           '/survey': (ctx) => SurveyScreen(),
+          '/total': (ctx) => TotalScreen(),
         },
       );
 }
