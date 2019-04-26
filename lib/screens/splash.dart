@@ -16,7 +16,7 @@ class _SplashScreenState extends State<SplashScreen> {
   void initState() {
     super.initState();
 
-    FlutterUdid.consistentUdid.then((_duid) async {
+    FlutterUdid.udid.then((_duid) async {
       duid = _duid;
 
       final uids = await dbRef.child("uids").once();

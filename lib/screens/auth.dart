@@ -3,7 +3,6 @@ import 'package:flutter/widgets.dart';
 import 'package:good_policeman_survey/main.dart';
 import 'package:good_policeman_survey/widget_templates.dart';
 import 'package:progress_hud/progress_hud.dart';
-import 'package:flutter_udid/flutter_udid.dart';
 
 class AuthScreen extends StatefulWidget {
   AuthScreen({Key key}) : super(key: key);

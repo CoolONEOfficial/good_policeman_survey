@@ -18,6 +18,10 @@ enum Area {
 
 final StreamController<Area> _onArea = StreamController<Area>.broadcast();
 
+class SurveyModel {
+  Area area = Area.None;
+}
+
 class SurveyScreen extends StatelessWidget {
   final _formKey = GlobalKey<FormState>();
   final ProgressHUD _progress = ProgressHUD(
@@ -28,7 +32,7 @@ class SurveyScreen extends StatelessWidget {
     borderRadius: 5.0,
     text: 'Загрузка...',
   );
-  Area _area = Area.None;
+  final _model = SurveyModel();
   final _areas = [
     "Не указано",
     "Автозаводский",
@@ -69,19 +73,23 @@ class SurveyScreen extends StatelessWidget {
             Container(width: 10),
             StreamBuilder(
               stream: _onArea.stream,
-              builder: (ctx, ssArea) => DropdownButton(
-                value: _area.index,
-                items: _areas
-                    .map<DropdownMenuItem>((val) => DropdownMenuItem(
-                          value: _areas.indexOf(val),
-                          child: Text(val),
-                        ))
-                    .toList(),
-                onChanged: (areaId) {
-                  _area = Area.values[areaId];
-                  _onArea.add(_area);
-                },
-              ),
+              builder: (ctx, ssArea) => Flexible(
+                    child: DropdownButtonFormField(
+                      validator: (value) =>
+                          value == 0 ? "Выберите район" : null,
+                      value: _model.area.index,
+                      items: _areas
+                          .map<DropdownMenuItem>((val) => DropdownMenuItem(
+                                value: _areas.indexOf(val),
+                                child: Text(val),
+                              ))
+                          .toList(),
+                      onChanged: (areaId) {
+                        _model.area = Area.values[areaId];
+                        _onArea.add(_model.area);
+                      },
+                    ),
+                  ),
             ),
           ],
         ),
