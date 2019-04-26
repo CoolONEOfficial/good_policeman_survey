@@ -9,6 +9,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:random_string/random_string.dart';
 import 'package:geolocator/geolocator.dart';
 
+enum Gender {
+  Unknown,
+  Male,
+  Female,
+}
+
 enum Area {
   None,
   Autozavodsk,
@@ -21,18 +27,45 @@ enum Area {
   Sormovsk,
 }
 
+final _areas = [
+  "Не указано",
+  "Автозаводский",
+  "Канавинский",
+  "Ленинский",
+  "Московский",
+  "Нижегородский",
+  "Приокский",
+  "Советский",
+  "Сормовский",
+];
+
+final _ageNames = ['<18', '18-24', '25-36', '37-50', '51-75', '>75'];
+
+final _genderNames = ['male', 'anonym', 'female'];
+
+final _genders = [Gender.Male, Gender.Unknown, Gender.Female];
+
 final StreamController _onArea = StreamController<Area>.broadcast(),
-    _onSelfie = StreamController<File>.broadcast();
+    _onSelfie = StreamController<File>.broadcast(),
+    _onGender = StreamController<Gender>.broadcast(),
+    _onAge = StreamController<double>.broadcast(),
+    _onAdContact = StreamController<bool>.broadcast();
 
 class SurveyModel {
   final String areaName;
   final String selfieUrl;
   final Position position;
+  final Gender gender;
+  final String age;
+  final bool adContact;
 
   const SurveyModel({
     this.areaName,
     this.selfieUrl,
     this.position,
+    this.gender,
+    this.age,
+    this.adContact,
   });
 
   toJson() => {
@@ -41,7 +74,10 @@ class SurveyModel {
         "position": {
           "lat": position.latitude,
           "lng": position.longitude,
-        }
+        },
+        "gender": _genderNames[gender.index],
+        "age": age,
+        "adContact": adContact,
       };
 }
 
@@ -59,17 +95,9 @@ class SurveyScreen extends StatelessWidget {
   );
   File _selfieImage;
   Area _area = Area.None;
-  final _areas = [
-    "Не указано",
-    "Автозаводский",
-    "Канавинский",
-    "Ленинский",
-    "Московский",
-    "Нижегородский",
-    "Приокский",
-    "Советский",
-    "Сормовский",
-  ];
+  Gender _gender = Gender.Unknown;
+  double _ageId = 0;
+  bool _adContact = false;
 
   bool _validateAndSave() {
     final form = _formKey.currentState;
@@ -100,6 +128,7 @@ class SurveyScreen extends StatelessWidget {
                 areaName: _areas[_area.index],
                 selfieUrl: url,
                 position: position,
+                gender: _gender,
               ).toJson(),
             );
 
@@ -157,7 +186,7 @@ class SurveyScreen extends StatelessWidget {
   ) =>
       Center(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(15.0, 15.0, 15.0, 0.0),
+          padding: const EdgeInsets.fromLTRB(15.0, 45.0, 15.0, 0.0),
           child: StreamBuilder(
               stream: _onSelfie.stream,
               builder: (ctx, _) => CircleAvatar(
@@ -215,8 +244,101 @@ class SurveyScreen extends StatelessWidget {
         ),
       );
 
+  Widget _genderInput(
+    BuildContext ctx,
+  ) =>
+      Center(
+        child: StreamBuilder(
+          stream: _onGender.stream,
+          builder: (ctx, _) => Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.max,
+                children: List.generate(
+                  3,
+                  (i) => Padding(
+                        padding:
+                            const EdgeInsets.fromLTRB(15.0, 15.0, 15.0, 0.0),
+                        child: GestureDetector(
+                          onTap: () {
+                            _gender = _genders[i];
+                            _onGender.add(_gender);
+                          },
+                          child: Container(
+                            foregroundDecoration: _gender == _genders[i]
+                                ? BoxDecoration()
+                                : BoxDecoration(
+                                    color: Colors.grey,
+                                    backgroundBlendMode: BlendMode.saturation,
+                                  ),
+                            child: Image.asset(
+                              'assets/icons/' + _genderNames[i] + '.png',
+                              width: 100,
+                              height: 100,
+                            ),
+                          ),
+                        ),
+                      ),
+                ),
+              ),
+        ),
+      );
+
+  Widget _ageInput(
+    BuildContext ctx,
+  ) =>
+      Padding(
+        padding: const EdgeInsets.fromLTRB(15.0, 15.0, 15.0, 0.0),
+        child: Row(
+          children: <Widget>[
+            Text("Возраст:", style: Theme.of(ctx).textTheme.title),
+            Container(width: 10),
+            Expanded(
+              child: StreamBuilder(
+                stream: _onAge.stream,
+                builder: (ctx, _) => Slider(
+                      onChanged: (value) {
+                        debugPrint("age: " + value.toString());
+                        _ageId = value;
+                        _onAge.add(_ageId);
+                      },
+                      divisions: _ageNames.length - 1,
+                      label: _ageNames[_ageId.toInt()],
+                      value: _ageId,
+                      min: 0,
+                      max: (_ageNames.length - 1).toDouble(),
+                    ),
+              ),
+            ),
+          ],
+        ),
+      );
+
+  Widget _adContactInput(
+    BuildContext ctx,
+  ) =>
+      Padding(
+        padding: const EdgeInsets.fromLTRB(15.0, 15.0, 15.0, 0.0),
+        child: StreamBuilder(
+          stream: _onAdContact.stream,
+          builder: (ctx, _) {
+            return CheckboxListTile(
+              value: _adContact,
+              onChanged: (value) {
+                _adContact = value;
+                _onAdContact.add(_adContact);
+              },
+              title: Text('Готов контактировать с администрацией'),
+              controlAffinity: ListTileControlAffinity.leading,
+            );
+          }
+        ),
+      );
+
   @override
-  Widget build(BuildContext ctx) => Scaffold(
+  Widget build(
+    BuildContext ctx,
+  ) =>
+      Scaffold(
         key: _scaffoldKey,
         appBar: AppBar(
           title: Text("Добавление анкеты"),
@@ -234,7 +356,10 @@ class SurveyScreen extends StatelessWidget {
               child: ListView(
                 shrinkWrap: true,
                 children: <Widget>[
+                  _genderInput(ctx),
+                  _ageInput(ctx),
                   _areaInput(ctx),
+                  _adContactInput(ctx),
                   _selfieInput(ctx),
                 ],
               ),

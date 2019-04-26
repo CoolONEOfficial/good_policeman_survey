@@ -2,7 +2,6 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter_udid/flutter_udid.dart';
 import 'package:good_policeman_survey/screens/auth.dart';
 import 'package:good_policeman_survey/screens/splash.dart';
 import 'package:good_policeman_survey/screens/survey.dart';
