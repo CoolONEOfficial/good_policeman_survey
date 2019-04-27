@@ -93,6 +93,8 @@ class _AuthScreenState extends State<AuthScreen> {
                                               await dbRef.child("keys").update(
                                                   {keyId.toString(): null});
 
+                                              await localStorage.setItem("signed", true);
+
                                               Navigator.of(ctx)
                                                   .pushNamedAndRemoveUntil(
                                                 '/survey',

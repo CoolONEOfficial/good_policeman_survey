@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:connectivity/connectivity.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:device_info/device_info.dart';
@@ -32,10 +33,19 @@ class _SplashScreenState extends State<SplashScreen> {
       debugPrint("Udid: " + _duid);
       duid = _duid;
 
-      final uids = await dbRef.child("uids").once();
+      bool signed;
+
+      await localStorage.ready;
+      if(await Connectivity().checkConnectivity() == ConnectivityResult.none) {
+        signed = localStorage.getItem("signed") ?? false;
+      } else {
+        final uids = await dbRef.child("uids").once();
+        await localStorage.setItem("signed", true);
+        signed = uids?.value?.contains(duid) ?? false;
+      }
 
       Navigator.of(context).pushNamedAndRemoveUntil(
-        uids?.value?.contains(duid) ?? false ? '/survey' : '/auth',
+         signed ? '/survey' : '/auth',
         (Route<dynamic> route) => false,
       );
     });

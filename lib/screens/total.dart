@@ -1,7 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 
+enum SurveyResult {
+  Uploaded,
+  Cached,
+}
+
+final _resultNames = [
+  "Анкета успешно отправлена",
+  "Анкета успешно сохранена в кэш"
+];
+
 class TotalScreen extends StatelessWidget {
+  final SurveyResult surveyResult;
+
+  const TotalScreen(this.surveyResult, {Key key}) : super(key: key);
+
   @override
   Widget build(BuildContext ctx) => Theme(
         data: ThemeData(
@@ -19,8 +33,9 @@ class TotalScreen extends StatelessWidget {
                     child: Container(
                       width: 350,
                       child: Text(
-                        "Анкета успешно отправлена",
-                        style: Theme.of(ctx).textTheme.display4.merge(TextStyle(fontSize: 70, color: Colors.white)),
+                        _resultNames[surveyResult.index],
+                        style: Theme.of(ctx).textTheme.display4.merge(
+                            TextStyle(fontSize: 70, color: Colors.white)),
                       ),
                     ),
                   ),

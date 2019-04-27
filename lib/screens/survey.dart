@@ -1,15 +1,20 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
-import 'package:flutter/widgets.dart' as prefix0;
+import 'package:badges/badges.dart';
 import 'package:good_policeman_survey/main.dart';
+import 'package:good_policeman_survey/screens/total.dart';
+import 'package:good_policeman_survey/widget_templates.dart';
 import 'package:progress_hud/progress_hud.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:random_string/random_string.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:connectivity/connectivity.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:flutter_tagging/flutter_tagging.dart';
 
 enum Gender {
@@ -30,7 +35,7 @@ enum Area {
   Sormovsk,
 }
 
-final _areas = [
+final _areaNames = [
   "Не указано",
   "Автозаводский",
   "Канавинский",
@@ -42,7 +47,62 @@ final _areas = [
   "Сормовский",
 ];
 
-final _ageNames = ['<18', '18-24', '25-36', '37-50', '51-75', '>75'];
+StreamSubscription internetSub;
+
+void _addCachedSurvey([
+  SurveyModel model,
+]) {
+  if (model != null) _cachedSurveys.add(model);
+  if (internetSub == null) {
+    internetSub = Connectivity()
+        .onConnectivityChanged
+        .listen((ConnectivityResult result) async {
+      if (result != ConnectivityResult.none) {
+        Fluttertoast.showToast(
+          backgroundColor: Colors.blue,
+          msg: "Начата загрузка анкет из кэша в базу",
+        );
+        final len = _cachedSurveys.length;
+        do {
+          var model = _cachedSurveys.last;
+          await dbRef.child("survey").push().set(await model.toDb());
+          _cachedSurveys.removeLast();
+          _onCache.add(null);
+
+          Fluttertoast.cancel();
+          Fluttertoast.showToast(
+            backgroundColor: Colors.blue,
+            msg: "(${len - _cachedSurveys.length}/$len)",
+          );
+        } while (_cachedSurveys.isNotEmpty);
+
+        final localLen = localStorage.getItem('len');
+        if (localLen != null) {
+          for (var i = 0; i < localLen; i++) {
+            localStorage.deleteItem(i.toString());
+          }
+          localStorage.deleteItem('len');
+        }
+
+        internetSub.cancel().then((_) {
+          internetSub = null;
+        });
+      }
+    });
+  }
+}
+
+List<SurveyModel> _cachedSurveys = [];
+
+final _ageNames = [
+  'Не указано',
+  '<18',
+  '18-24',
+  '25-36',
+  '37-50',
+  '51-75',
+  '>75'
+];
 
 final _genderNames = ['male', 'anonym', 'female'];
 
@@ -51,21 +111,40 @@ final _genders = [Gender.Male, Gender.Unknown, Gender.Female];
 final StreamController _onArea = StreamController<Area>.broadcast(),
     _onSelfie = StreamController<File>.broadcast(),
     _onGender = StreamController<Gender>.broadcast(),
-    _onAge = StreamController<double>.broadcast(),
-    _onAdContact = StreamController<bool>.broadcast();
+    _onAge = StreamController<int>.broadcast(),
+    _onAdContact = StreamController<bool>.broadcast(),
+    _onCache = StreamController.broadcast();
 
 class SurveyModel {
   final String areaName;
-  final String selfieUrl;
+  final File selfieFile;
   final Position position;
   final Gender gender;
   final String age;
   final bool adContact;
   final List problems;
 
+  factory SurveyModel.fromCache(Map<String, dynamic> json) {
+    final model = SurveyModel(
+      areaName: json["area"],
+      position: Position(
+        latitude: json["position"]["lat"],
+        longitude: json["position"]["lng"],
+      ),
+      gender: Gender.values[_genderNames.indexOf(json["gender"])],
+      age: json["age"],
+      adContact: json["adContact"],
+      problems: json["problems"],
+    );
+
+    debugPrint("Cache json model: " + jsonEncode(json));
+
+    return model;
+  }
+
   const SurveyModel({
     this.areaName,
-    this.selfieUrl,
+    this.selfieFile,
     this.position,
     this.gender,
     this.age,
@@ -73,9 +152,8 @@ class SurveyModel {
     this.problems,
   });
 
-  toJson() => {
+  _jsonBase() => {
         "area": areaName,
-        "selfie": selfieUrl,
         "position": {
           "lat": position.latitude,
           "lng": position.longitude,
@@ -85,6 +163,21 @@ class SurveyModel {
         "adContact": adContact,
         "problems": problems,
       };
+
+  Map<String, dynamic> toCache() => {
+        "selfieFile": selfieFile?.path,
+      }..addAll(_jsonBase());
+
+  Future<Map<String, dynamic>> toDb() async => {
+        "selfieUrl": selfieFile != null
+            ? await (await storageRef
+                    .child("survey/" + duid + '/' + randomAlphaNumeric(10))
+                    .putFile(selfieFile)
+                    .onComplete)
+                .ref
+                .getDownloadURL()
+            : null,
+      }..addAll(_jsonBase());
 }
 
 class SurveyScreen extends StatefulWidget {
@@ -108,75 +201,123 @@ class _SurveyScreenState extends State<SurveyScreen> {
   File _selfieImage;
   Area _area = Area.None;
   Gender _gender = Gender.Unknown;
-  double _ageId = 0;
+  int _ageId = 0;
   bool _adContact = false;
   List _problems = [];
-  String _problemError;
+  String _problemsError, _genderError, _ageError;
 
-  bool _validateAndSave() {
-    final form = _formKey.currentState;
-    if (form.validate()) {
-      form.save();
-      return true;
-    }
-    return false;
+  @override
+  void initState() {
+    super.initState();
+
+    if (_cachedSurveys.isEmpty)
+      localStorage.ready.then((ready) {
+        if (ready) {
+          var len = localStorage.getItem('len') ?? 0;
+          for (var i = 0; i < len; i++) {
+            _cachedSurveys.add(SurveyModel.fromCache(
+              localStorage.getItem(i.toString()),
+            ));
+          }
+          if (len > 0) _addCachedSurvey();
+          _onCache.add(null);
+        } else
+          debugPrint("ERororor local storage not readyy!");
+      });
   }
 
   void _validateAndSubmit(BuildContext ctx) async {
     bool valid = true;
 
+    if (_ageId == 0) {
+      valid = false;
+
+      setState(() {
+        _ageError = "Выберите возраст";
+      });
+    }
+
     if (_problems.isEmpty) {
       valid = false;
 
       setState(() {
-        _problemError = "Необходимо ввести проблемы";
+        _problemsError = "Добавьте проблемы";
       });
     }
 
-    if (!_validateAndSave()) {
+    if (_gender == Gender.Unknown) {
+      valid = false;
+
+      setState(() {
+        _genderError = "Выберите пол";
+      });
+    }
+
+    final form = _formKey.currentState;
+    if (!form.validate()) {
       valid = false;
     }
 
     if (valid) {
+      form.save();
       _progress.state.show();
 
-      final url = _selfieImage != null
-          ? await (await storageRef
-                  .child("survey/" + duid + '/' + randomAlphaNumeric(10))
-                  .putFile(_selfieImage)
-                  .onComplete)
-              .ref
-              .getDownloadURL()
-          : null;
+      await _submit(ctx);
 
-      final position = await Geolocator()
-          .getCurrentPosition(desiredAccuracy: LocationAccuracy.best);
+      if (_progress.state.mounted) _progress.state.dismiss();
+    }
+  }
 
-      if (position != null) {
-        await dbRef.child("survey").push().set(
-              SurveyModel(
-                areaName: _areas[_area.index],
-                selfieUrl: url,
-                position: position,
-                gender: _gender,
-                problems: _problems.map((problem) => problem["name"]).toList(),
-              ).toJson(),
-            );
+  _submit(BuildContext ctx) async {
+    final position = await Geolocator()
+        .getCurrentPosition(desiredAccuracy: LocationAccuracy.best);
+    String errorMessage;
 
-        Navigator.of(ctx).pushNamedAndRemoveUntil(
-          '/total',
+    if (position != null) {
+      final model = SurveyModel(
+        areaName: _areaNames[_area.index],
+        selfieFile: _selfieImage,
+        position: position,
+        gender: _gender,
+        adContact: _adContact,
+        age: _ageNames[_ageId],
+        problems: _problems.map((problem) => problem["name"]).toList(),
+      );
+
+      SurveyResult sRes;
+
+      if (await Connectivity().checkConnectivity() == ConnectivityResult.none) {
+        if (await localStorage.ready) {
+          _addCachedSurvey(model);
+          localStorage
+            ..setItem('len', _cachedSurveys.length)
+            ..setItem((_cachedSurveys.length - 1).toString(), model.toCache());
+          _onCache.add(null);
+
+          sRes = SurveyResult.Cached;
+        } else
+          errorMessage = "Не удалось получить доступ к локальному хранилищу";
+      } else {
+        await dbRef.child("survey").push().set(await model.toDb());
+
+        sRes = SurveyResult.Uploaded;
+      }
+
+      if (errorMessage == null) {
+        Navigator.of(ctx).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (ctx) => TotalScreen(sRes)),
           (Route<dynamic> route) => false,
         );
-      } else {
-        _scaffoldKey.currentState.showSnackBar(
-          SnackBar(
-            content: Text("Не получилось получить местоположение устройства"),
-          ),
-        );
-
-        _progress.state.dismiss();
       }
-    }
+    } else
+      errorMessage = "Не получилось получить местоположение устройства";
+
+    if (errorMessage != null)
+      _scaffoldKey.currentState.showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+        ),
+      );
   }
 
   Widget _areaInput(
@@ -195,9 +336,9 @@ class _SurveyScreenState extends State<SurveyScreen> {
                       validator: (value) =>
                           value == 0 ? "Выберите район" : null,
                       value: _area?.index,
-                      items: _areas
+                      items: _areaNames
                           .map<DropdownMenuItem>((val) => DropdownMenuItem(
-                                value: _areas.indexOf(val),
+                                value: _areaNames.indexOf(val),
                                 child: Text(val),
                               ))
                           .toList(),
@@ -279,55 +420,62 @@ class _SurveyScreenState extends State<SurveyScreen> {
     BuildContext ctx,
   ) =>
       Center(
-        child: StreamBuilder(
-          stream: _onGender.stream,
-          builder: (ctx, _) => Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.max,
-                children: List.generate(
-                  3,
-                  (i) => Padding(
-                        padding:
-                            const EdgeInsets.fromLTRB(15.0, 15.0, 15.0, 0.0),
-                        child: GestureDetector(
-                          onTap: () {
-                            _gender = _genders[i];
-                            _onGender.add(_gender);
-                          },
-                          child: Container(
-                            child: Column(
-                              children: <Widget>[
-                                Container(
-                                  width: 100,
-                                  height: 100,
-                                  decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      image: DecorationImage(
-                                        image: AssetImage('assets/icons/' +
-                                            _genderNames[i] +
-                                            '.png'),
-                                      )),
-                                  foregroundDecoration: _gender == _genders[i]
-                                      ? BoxDecoration()
-                                      : BoxDecoration(
-                                          color: Colors.black,
+        child: Column(
+          children: <Widget>[
+            StreamBuilder(
+              stream: _onGender.stream,
+              builder: (ctx, _) => Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.max,
+                    children: List.generate(
+                      3,
+                      (i) => Padding(
+                            padding: const EdgeInsets.fromLTRB(
+                                15.0, 15.0, 15.0, 0.0),
+                            child: GestureDetector(
+                              onTap: () {
+                                _genderError = null;
+                                _gender = _genders[i];
+                                _onGender.add(_gender);
+                              },
+                              child: Container(
+                                child: Column(
+                                  children: <Widget>[
+                                    Container(
+                                      width: 100,
+                                      height: 100,
+                                      decoration: BoxDecoration(
                                           shape: BoxShape.circle,
-                                          backgroundBlendMode:
-                                              BlendMode.saturation,
-                                        ),
+                                          image: DecorationImage(
+                                            image: AssetImage('assets/icons/' +
+                                                _genderNames[i] +
+                                                '.png'),
+                                          )),
+                                      foregroundDecoration:
+                                          _gender == _genders[i]
+                                              ? BoxDecoration()
+                                              : BoxDecoration(
+                                                  color: Colors.black,
+                                                  shape: BoxShape.circle,
+                                                  backgroundBlendMode:
+                                                      BlendMode.saturation,
+                                                ),
+                                    ),
+                                    Container(height: 10),
+                                    Text(
+                                      ["М", "Не указано", "Ж"][i],
+                                      style: Theme.of(ctx).textTheme.title,
+                                    ),
+                                  ],
                                 ),
-                                Container(height: 10),
-                                Text(
-                                  ["М", "Не указано", "Ж"][i],
-                                  style: Theme.of(ctx).textTheme.title,
-                                ),
-                              ],
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                ),
-              ),
+                    ),
+                  ),
+            ),
+            WidgetTemplates.buildErrorText(_genderError),
+          ],
         ),
       );
 
@@ -341,20 +489,27 @@ class _SurveyScreenState extends State<SurveyScreen> {
             Text("Возраст:", style: Theme.of(ctx).textTheme.title),
             Container(width: 10),
             Expanded(
-              child: StreamBuilder(
-                stream: _onAge.stream,
-                builder: (ctx, _) => Slider(
-                      onChanged: (value) {
-                        debugPrint("age: " + value.toString());
-                        _ageId = value;
-                        _onAge.add(_ageId);
-                      },
-                      divisions: _ageNames.length - 1,
-                      label: _ageNames[_ageId.toInt()],
-                      value: _ageId,
-                      min: 0,
-                      max: (_ageNames.length - 1).toDouble(),
-                    ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  StreamBuilder(
+                    stream: _onAge.stream,
+                    builder: (ctx, _) => Slider(
+                          onChanged: (value) {
+                            _ageError = null;
+                            _ageId = value.toInt();
+                            debugPrint("age: " + _ageNames[_ageId]);
+                            _onAge.add(_ageId);
+                          },
+                          divisions: _ageNames.length - 1,
+                          label: _ageNames[_ageId],
+                          value: _ageId.toDouble(),
+                          min: 0,
+                          max: (_ageNames.length - 1).toDouble(),
+                        ),
+                  ),
+                  WidgetTemplates.buildErrorText(_ageError),
+                ],
               ),
             ),
           ],
@@ -415,26 +570,24 @@ class _SurveyScreenState extends State<SurveyScreen> {
                   labelText: "Введите проблемы"),
               addButtonWidget: _buildAddButton(),
               deleteIcon: Icon(Icons.cancel, color: Colors.white),
-              suggestionsCallback: (query) => _suggestions
-                  .map((name) =>
-                      {'name': name, 'value': _suggestions.indexOf(name) + 1})
-                  .where((tag) => tag['name'].toLowerCase().contains(query))
-                  .toList()
-                    ..add({'name': query, 'value': 0}),
+              suggestionsCallback: (query) {
+                final sugg = _suggestions
+                    .map((name) =>
+                        {'name': name, 'value': _suggestions.indexOf(name) + 1})
+                    .where((tag) => tag['name'].toLowerCase().contains(query))
+                    .toList();
+                if (query.isNotEmpty) sugg.add({'name': query, 'value': 0});
+                return sugg;
+              },
               onChanged: (result) {
                 debugPrint("Problems: " + result.toString());
                 setState(() {
-                  _problemError = null;
+                  _problemsError = null;
                   _problems = result;
                 });
               },
             ),
-            Container(height: 10),
-            Text(
-              _problemError ?? "",
-              textAlign: TextAlign.left,
-              style: TextStyle(color: Colors.red),
-            ),
+            WidgetTemplates.buildErrorText(_problemsError),
           ],
         ),
       );
@@ -448,10 +601,13 @@ class _SurveyScreenState extends State<SurveyScreen> {
         appBar: AppBar(
           title: Text("Добавление анкеты"),
           actions: <Widget>[
-            IconButton(
-              icon: Icon(Icons.send),
-              onPressed: () => _validateAndSubmit(ctx),
-            ),
+            StreamBuilder(
+                stream: _onCache.stream,
+                builder: (ctx, _) => BadgeIconButton(
+                      itemCount: _cachedSurveys.length,
+                      icon: Icon(Icons.send),
+                      onPressed: () => _validateAndSubmit(ctx),
+                    )),
           ],
         ),
         body: Stack(
@@ -481,4 +637,6 @@ final List _suggestions = [
   "Долгострой",
   "Мусор",
   "Экология",
+  "Реклама",
+  "Пробки",
 ];

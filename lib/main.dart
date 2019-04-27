@@ -5,8 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:good_policeman_survey/screens/auth.dart';
 import 'package:good_policeman_survey/screens/splash.dart';
 import 'package:good_policeman_survey/screens/survey.dart';
-import 'package:good_policeman_survey/screens/total.dart';
-import 'package:good_policeman_survey/widget_templates.dart';
+import 'package:localstorage/localstorage.dart';
 
 void main() => runApp(MyApp());
 
@@ -19,12 +18,11 @@ class MyApp extends StatelessWidget {
           '/': (ctx) => SplashScreen(),
           '/auth': (ctx) => AuthScreen(),
           '/survey': (ctx) => SurveyScreen(),
-          '/total': (ctx) => TotalScreen(),
         },
       );
 }
 
 String duid;
-
+final LocalStorage localStorage = LocalStorage('survey_cache');
 final storageRef = FirebaseStorage.instance.ref(),
     dbRef = FirebaseDatabase.instance.reference();

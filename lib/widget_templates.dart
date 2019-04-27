@@ -19,6 +19,15 @@ class WidgetTemplates {
         ),
       );
 
+  static Widget buildErrorText(String error) => Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: Text(
+          error ?? "",
+          textAlign: TextAlign.left,
+          style: TextStyle(color: Colors.red),
+        ),
+      );
+
   static Widget _buildIconNotification(
     BuildContext ctx,
     String text, [
@@ -44,10 +53,10 @@ class WidgetTemplates {
       _buildIconNotification(ctx, error, Icons.error);
 
   static Image buildLogo() => Image.asset(
-    'assets/icons/icon.png',
-    width: 200,
-    height: 260,
-  );
+        'assets/icons/icon.png',
+        width: 200,
+        height: 260,
+      );
 
   static Widget buildFutureBuilder<T>(
     BuildContext ctx, {
