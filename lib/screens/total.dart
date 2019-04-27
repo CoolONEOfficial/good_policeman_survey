@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
-import 'package:good_policeman_survey/widget_templates.dart';
 
 class TotalScreen extends StatelessWidget {
   @override
@@ -11,25 +10,30 @@ class TotalScreen extends StatelessWidget {
         child: Scaffold(
           body: Align(
             alignment: Alignment.center,
-            child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisSize: MainAxisSize.max,
-                children: <Widget>[
-                  Text(
-                    "Анкета успешно отправлена",
-                    style: Theme.of(ctx).textTheme.title,
-                  ),
-                  FloatingActionButton(
-                    onPressed: () {
-                      Navigator.of(ctx).pushNamedAndRemoveUntil(
-                        '/survey',
-                        (Route<dynamic> route) => false,
-                      );
-                    },
-                    child: Icon(Icons.refresh),
-                  ),
-                ]),
+            child: Padding(
+              padding: const EdgeInsets.all(48.0),
+              child: Column(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.max,
+                  children: <Widget>[
+                    Text(
+                      "Анкета успешно отправлена",
+                      style: Theme.of(ctx).textTheme.display4.merge(TextStyle(fontSize: 70, color: Colors.white)),
+                    ),
+                    FloatingActionButton(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.blue,
+                      onPressed: () {
+                        Navigator.of(ctx).pushNamedAndRemoveUntil(
+                          '/survey',
+                          (Route<dynamic> route) => false,
+                        );
+                      },
+                      child: Icon(Icons.refresh),
+                    ),
+                  ]),
+            ),
           ),
         ),
       );
