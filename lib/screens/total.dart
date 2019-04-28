@@ -1,5 +1,7 @@
+import 'package:badges/badges.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:good_policeman_survey/screens/survey.dart';
 
 enum SurveyResult {
   Uploaded,
@@ -32,10 +34,31 @@ class TotalScreen extends StatelessWidget {
                   Center(
                     child: Container(
                       width: 350,
-                      child: Text(
-                        _resultNames[surveyResult.index],
-                        style: Theme.of(ctx).textTheme.display4.merge(
-                            TextStyle(fontSize: 70, color: Colors.white)),
+                      child: Column(
+                        children: <Widget>[
+                          Text(
+                            _resultNames[surveyResult.index],
+                            style: Theme.of(ctx).textTheme.display4.merge(
+                                TextStyle(fontSize: 70, color: Colors.white)),
+                          ),
+                        ]..addAll(
+                            surveyResult == SurveyResult.Cached
+                                ? [
+                                    Container(height: 20),
+                                    SingleChildScrollView(
+                                      child: Text(
+                                        "Все закешированные анкеты (${cachedSurveys.length}) автоматически отправятся в базу данных при подключении к интернету",
+                                        style: Theme.of(ctx)
+                                            .textTheme
+                                            .display4
+                                            .merge(TextStyle(
+                                                fontSize: 30,
+                                                color: Colors.white)),
+                                      ),
+                                    ),
+                                  ]
+                                : [],
+                          ),
                       ),
                     ),
                   ),

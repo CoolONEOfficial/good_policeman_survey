@@ -9,9 +9,9 @@ import 'package:badges/badges.dart';
 import 'package:good_policeman_survey/main.dart';
 import 'package:good_policeman_survey/screens/total.dart';
 import 'package:good_policeman_survey/widget_templates.dart';
+import 'package:path/path.dart';
 import 'package:progress_hud/progress_hud.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:random_string/random_string.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:connectivity/connectivity.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -52,7 +52,7 @@ StreamSubscription internetSub;
 void _addCachedSurvey([
   SurveyModel model,
 ]) {
-  if (model != null) _cachedSurveys.add(model);
+  if (model != null) cachedSurveys.add(model);
   if (internetSub == null) {
     internetSub = Connectivity()
         .onConnectivityChanged
@@ -62,19 +62,19 @@ void _addCachedSurvey([
           backgroundColor: Colors.blue,
           msg: "Начата загрузка анкет из кэша в базу",
         );
-        final len = _cachedSurveys.length;
+        final len = cachedSurveys.length;
         do {
-          var model = _cachedSurveys.last;
+          var model = cachedSurveys.last;
           await dbRef.child("survey").push().set(await model.toDb());
-          _cachedSurveys.removeLast();
+          cachedSurveys.removeLast();
           _onCache.add(null);
 
           Fluttertoast.cancel();
           Fluttertoast.showToast(
             backgroundColor: Colors.blue,
-            msg: "(${len - _cachedSurveys.length}/$len)",
+            msg: "(${len - cachedSurveys.length}/$len)",
           );
-        } while (_cachedSurveys.isNotEmpty);
+        } while (cachedSurveys.isNotEmpty);
 
         final localLen = localStorage.getItem('len');
         if (localLen != null) {
@@ -92,7 +92,7 @@ void _addCachedSurvey([
   }
 }
 
-List<SurveyModel> _cachedSurveys = [];
+List<SurveyModel> cachedSurveys = [];
 
 final _ageNames = [
   'Не указано',
@@ -126,18 +126,25 @@ class SurveyModel {
 
   factory SurveyModel.fromCache(Map<String, dynamic> json) {
     final model = SurveyModel(
-      areaName: json["area"],
-      position: Position(
-        latitude: json["position"]["lat"],
-        longitude: json["position"]["lng"],
-      ),
-      gender: Gender.values[_genderNames.indexOf(json["gender"])],
-      age: json["age"],
-      adContact: json["adContact"],
-      problems: json["problems"],
-    );
+        areaName: json["area"],
+        position: Position(
+          latitude: json["position"]["lat"],
+          longitude: json["position"]["lng"],
+        ),
+        gender: Gender.values[_genderNames.indexOf(json["gender"])],
+        age: json["age"],
+        adContact: json["adContact"],
+        problems: json["problems"],
+        selfieFile: File(json["selfieFile"]));
 
     debugPrint("Cache json model: " + jsonEncode(json));
+    if (model.selfieFile != null)
+      model.selfieFile.exists().then(
+            (e) => debugPrint("Selfie file exists: " +
+                e.toString() +
+                " on " +
+                model.selfieFile.path),
+          );
 
     return model;
   }
@@ -171,7 +178,7 @@ class SurveyModel {
   Future<Map<String, dynamic>> toDb() async => {
         "selfieUrl": selfieFile != null
             ? await (await storageRef
-                    .child("survey/" + duid + '/' + randomAlphaNumeric(10))
+                    .child("survey/" + duid + '/' + basename(selfieFile.path))
                     .putFile(selfieFile)
                     .onComplete)
                 .ref
@@ -198,7 +205,13 @@ class _SurveyScreenState extends State<SurveyScreen> {
     text: 'Загрузка...',
   );
 
-  File _selfieImage;
+  File _selfieFile;
+
+  set selfieFile(val) {
+    _selfieFile = val;
+    _onSelfie.add(_selfieFile);
+  }
+
   Area _area = Area.None;
   Gender _gender = Gender.Unknown;
   int _ageId = 0;
@@ -210,12 +223,12 @@ class _SurveyScreenState extends State<SurveyScreen> {
   void initState() {
     super.initState();
 
-    if (_cachedSurveys.isEmpty)
+    if (cachedSurveys.isEmpty)
       localStorage.ready.then((ready) {
         if (ready) {
           var len = localStorage.getItem('len') ?? 0;
           for (var i = 0; i < len; i++) {
-            _cachedSurveys.add(SurveyModel.fromCache(
+            cachedSurveys.add(SurveyModel.fromCache(
               localStorage.getItem(i.toString()),
             ));
           }
@@ -276,7 +289,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
     if (position != null) {
       final model = SurveyModel(
         areaName: _areaNames[_area.index],
-        selfieFile: _selfieImage,
+        selfieFile: _selfieFile,
         position: position,
         gender: _gender,
         adContact: _adContact,
@@ -290,8 +303,8 @@ class _SurveyScreenState extends State<SurveyScreen> {
         if (await localStorage.ready) {
           _addCachedSurvey(model);
           localStorage
-            ..setItem('len', _cachedSurveys.length)
-            ..setItem((_cachedSurveys.length - 1).toString(), model.toCache());
+            ..setItem('len', cachedSurveys.length)
+            ..setItem((cachedSurveys.length - 1).toString(), model.toCache());
           _onCache.add(null);
 
           sRes = SurveyResult.Cached;
@@ -364,29 +377,24 @@ class _SurveyScreenState extends State<SurveyScreen> {
               builder: (ctx, _) => CircleAvatar(
                     radius: 60,
                     backgroundColor:
-                        _selfieImage != null ? Colors.transparent : Colors.blue,
+                        _selfieFile != null ? Colors.transparent : Colors.blue,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       mainAxisSize: MainAxisSize.max,
-                      children: _selfieImage != null
+                      children: _selfieFile != null
                           ? [
                               IconButton(
                                 icon: Icon(Icons.delete),
-                                onPressed: () {
-                                  _selfieImage = null;
-                                  _onSelfie.add(_selfieImage);
-                                },
+                                onPressed: () => selfieFile = null,
                               ),
                               Expanded(
                                 child: Container(),
                               ),
                               IconButton(
                                 icon: Icon(Icons.refresh),
-                                onPressed: () async {
-                                  _selfieImage = await ImagePicker.pickImage(
-                                      source: ImageSource.camera);
-                                  _onSelfie.add(_selfieImage);
-                                },
+                                onPressed: () async => selfieFile =
+                                    await ImagePicker.pickImage(
+                                        source: ImageSource.camera),
                               ),
                             ]
                           : [
@@ -395,11 +403,9 @@ class _SurveyScreenState extends State<SurveyScreen> {
                                   Icons.add,
                                   size: 30,
                                 ),
-                                onPressed: () async {
-                                  _selfieImage = await ImagePicker.pickImage(
-                                      source: ImageSource.camera);
-                                  _onSelfie.add(_selfieImage);
-                                },
+                                onPressed: () async => selfieFile =
+                                    await ImagePicker.pickImage(
+                                        source: ImageSource.camera),
                               ),
                               Text(
                                 "Добавить\nселфи",
@@ -407,9 +413,9 @@ class _SurveyScreenState extends State<SurveyScreen> {
                               )
                             ],
                     ),
-                    backgroundImage: _selfieImage != null
+                    backgroundImage: _selfieFile != null
                         ? FileImage(
-                            _selfieImage,
+                            _selfieFile,
                           )
                         : null,
                   )),
@@ -604,7 +610,7 @@ class _SurveyScreenState extends State<SurveyScreen> {
             StreamBuilder(
                 stream: _onCache.stream,
                 builder: (ctx, _) => BadgeIconButton(
-                      itemCount: _cachedSurveys.length,
+                      itemCount: cachedSurveys.length,
                       icon: Icon(Icons.send),
                       onPressed: () => _validateAndSubmit(ctx),
                     )),
