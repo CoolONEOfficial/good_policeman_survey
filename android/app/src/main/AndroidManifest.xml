@@ -11,7 +11,7 @@
          FlutterApplication and put your custom class here. -->
     <application
         android:name="io.flutter.app.FlutterApplication"
-        android:label="good_policeman_survey"
+        android:label="Цифровой городовой"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
