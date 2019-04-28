@@ -1,10 +1,7 @@
-import 'dart:async';
-import 'dart:io';
-
 import 'package:connectivity/connectivity.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
-import 'package:device_info/device_info.dart';
+import 'package:device_id/device_id.dart';
 import 'package:good_policeman_survey/main.dart';
 import 'package:good_policeman_survey/widget_templates.dart';
 
@@ -14,22 +11,12 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  Future<String> _getDuid() async {
-    DeviceInfoPlugin deviceInfo = DeviceInfoPlugin();
-    if (Platform.isIOS) {
-      IosDeviceInfo iosDeviceInfo = await deviceInfo.iosInfo;
-      return iosDeviceInfo.identifierForVendor; // unique ID on iOS
-    } else {
-      AndroidDeviceInfo androidDeviceInfo = await deviceInfo.androidInfo;
-      return androidDeviceInfo.androidId; // unique ID on Android
-    }
-  }
 
   @override
   void initState() {
     super.initState();
 
-    _getDuid().then((_duid) async {
+    DeviceId.getID.then((_duid) async {
       debugPrint("Udid: " + _duid);
       duid = _duid;
 
