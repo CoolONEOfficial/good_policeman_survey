@@ -24,11 +24,6 @@ class _AuthScreenState extends State<AuthScreen> {
   TextEditingController keyController = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
   Widget build(BuildContext ctx) => Theme(
         data: ThemeData(
           canvasColor: Colors.blue,
@@ -79,21 +74,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                             final keyId = keys
                                                 .indexOf(keyController.text);
                                             if (keyId != -1) {
-                                              await dbRef
-                                                  .child('uids')
-                                                  .child(((await dbRef
-                                                                  .child('uids')
-                                                                  .once())
-                                                              ?.value
-                                                              ?.length ??
-                                                          0)
-                                                      .toString())
-                                                  .set(duid);
-
-                                              await dbRef.child("keys").update(
-                                                  {keyId.toString(): null});
-
-                                              await localStorage.setItem("signed", true);
+                                              user = await auth.signInAnonymously();
 
                                               Navigator.of(ctx)
                                                   .pushNamedAndRemoveUntil(

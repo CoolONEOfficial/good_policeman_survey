@@ -178,7 +178,7 @@ class SurveyModel {
   Future<Map<String, dynamic>> toDb() async => {
         "selfieUrl": selfieFile != null
             ? await (await storageRef
-                    .child("survey/" + duid + '/' + basename(selfieFile.path))
+                    .child("survey/" + user.uid + '/' + basename(selfieFile.path))
                     .putFile(selfieFile)
                     .onComplete)
                 .ref

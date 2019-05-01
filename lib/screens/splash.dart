@@ -1,7 +1,6 @@
 import 'package:connectivity/connectivity.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
-import 'package:device_id/device_id.dart';
 import 'package:good_policeman_survey/main.dart';
 import 'package:good_policeman_survey/widget_templates.dart';
 
@@ -11,28 +10,16 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-
   @override
   void initState() {
     super.initState();
 
-    DeviceId.getID.then((_duid) async {
-      debugPrint("Udid: " + _duid);
-      duid = _duid;
-
-      bool signed;
-
-      await localStorage.ready;
-      if(await Connectivity().checkConnectivity() == ConnectivityResult.none) {
-        signed = localStorage.getItem("signed") ?? false;
-      } else {
-        final uids = await dbRef.child("uids").once();
-        await localStorage.setItem("signed", true);
-        signed = uids?.value?.contains(duid) ?? false;
-      }
+    auth.currentUser().then((_user) {
+      debugPrint("User uid: " + (_user != null ? _user?.uid : 'non defined'));
+      user = _user;
 
       Navigator.of(context).pushNamedAndRemoveUntil(
-         signed ? '/survey' : '/auth',
+        user != null ? '/survey' : '/auth',
         (Route<dynamic> route) => false,
       );
     });

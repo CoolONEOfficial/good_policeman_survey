@@ -6,6 +6,7 @@ import 'package:good_policeman_survey/screens/auth.dart';
 import 'package:good_policeman_survey/screens/splash.dart';
 import 'package:good_policeman_survey/screens/survey.dart';
 import 'package:localstorage/localstorage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 void main() => runApp(MyApp());
 
@@ -22,7 +23,8 @@ class MyApp extends StatelessWidget {
       );
 }
 
-String duid;
+FirebaseUser user;
+final FirebaseAuth auth = FirebaseAuth.instance;
 final LocalStorage localStorage = LocalStorage('survey_cache');
 final storageRef = FirebaseStorage.instance.ref(),
     dbRef = FirebaseDatabase.instance.reference();
