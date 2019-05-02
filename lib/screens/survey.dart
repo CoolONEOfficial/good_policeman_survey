@@ -178,7 +178,8 @@ class SurveyModel {
   Future<Map<String, dynamic>> toDb() async => {
         "selfieUrl": selfieFile != null
             ? await (await storageRef
-                    .child("survey/" + user.uid + '/' + basename(selfieFile.path))
+                    .child(
+                        "survey/" + user.uid + '/' + basename(selfieFile.path))
                     .putFile(selfieFile)
                     .onComplete)
                 .ref
@@ -282,11 +283,13 @@ class _SurveyScreenState extends State<SurveyScreen> {
   }
 
   _submit(BuildContext ctx) async {
-    final position = await Geolocator()
-        .getCurrentPosition(desiredAccuracy: LocationAccuracy.best);
     String errorMessage;
 
-    if (position != null) {
+    if (await Geolocator().checkGeolocationPermissionStatus() ==
+        GeolocationStatus.granted) {
+      final position = await Geolocator()
+          .getCurrentPosition(desiredAccuracy: LocationAccuracy.best);
+
       final model = SurveyModel(
         areaName: _areaNames[_area.index],
         selfieFile: _selfieFile,
