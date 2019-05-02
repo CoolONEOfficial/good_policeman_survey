@@ -5,6 +5,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter/services.dart';
 import 'package:badges/badges.dart';
 import 'package:good_policeman_survey/main.dart';
 import 'package:good_policeman_survey/screens/total.dart';
@@ -283,13 +284,17 @@ class _SurveyScreenState extends State<SurveyScreen> {
   }
 
   _submit(BuildContext ctx) async {
+    var position;
+    try {
+      position = await Geolocator()
+          .getCurrentPosition(desiredAccuracy: LocationAccuracy.best);
+    } on PlatformException {
+      position = null;
+    }
+
     String errorMessage;
 
-    if (await Geolocator().checkGeolocationPermissionStatus() ==
-        GeolocationStatus.granted) {
-      final position = await Geolocator()
-          .getCurrentPosition(desiredAccuracy: LocationAccuracy.best);
-
+    if (position != null) {
       final model = SurveyModel(
         areaName: _areaNames[_area.index],
         selfieFile: _selfieFile,
