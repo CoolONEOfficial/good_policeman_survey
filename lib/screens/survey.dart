@@ -443,48 +443,54 @@ class _SurveyScreenState extends State<SurveyScreen> {
                     mainAxisSize: MainAxisSize.max,
                     children: List.generate(
                       3,
-                      (i) => Padding(
-                            padding: const EdgeInsets.fromLTRB(
-                                15.0, 15.0, 15.0, 0.0),
-                            child: GestureDetector(
-                              onTap: () {
-                                _genderError = null;
-                                _gender = _genders[i];
-                                _onGender.add(_gender);
-                              },
-                              child: Container(
-                                child: Column(
-                                  children: <Widget>[
-                                    Container(
-                                      width: 100,
-                                      height: 100,
-                                      decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          image: DecorationImage(
-                                            image: AssetImage('assets/icons/' +
-                                                _genderNames[i] +
-                                                '.png'),
-                                          )),
-                                      foregroundDecoration:
-                                          _gender == _genders[i]
-                                              ? BoxDecoration()
-                                              : BoxDecoration(
-                                                  color: Colors.black,
-                                                  shape: BoxShape.circle,
-                                                  backgroundBlendMode:
-                                                      BlendMode.saturation,
-                                                ),
-                                    ),
-                                    Container(height: 10),
-                                    Text(
-                                      ["М", "Не указано", "Ж"][i],
-                                      style: Theme.of(ctx).textTheme.title,
-                                    ),
-                                  ],
-                                ),
+                      (i) {
+                        final screen = MediaQuery.of(ctx).size;
+                        final size = (screen.width > screen.height
+                            ? screen.height
+                            : screen.width) / 3 - 45;
+
+                        return Padding(
+                          padding:
+                              const EdgeInsets.fromLTRB(15.0, 15.0, 15.0, 0.0),
+                          child: GestureDetector(
+                            onTap: () {
+                              _genderError = null;
+                              _gender = _genders[i];
+                              _onGender.add(_gender);
+                            },
+                            child: Container(
+                              child: Column(
+                                children: <Widget>[
+                                  Container(
+                                    width: size,
+                                    height: size,
+                                    decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        image: DecorationImage(
+                                          image: AssetImage('assets/icons/' +
+                                              _genderNames[i] +
+                                              '.png'),
+                                        )),
+                                    foregroundDecoration: _gender == _genders[i]
+                                        ? BoxDecoration()
+                                        : BoxDecoration(
+                                            color: Colors.black,
+                                            shape: BoxShape.circle,
+                                            backgroundBlendMode:
+                                                BlendMode.saturation,
+                                          ),
+                                  ),
+                                  Container(height: 10),
+                                  Text(
+                                    ["М", "Не указано", "Ж"][i],
+                                    style: Theme.of(ctx).textTheme.title,
+                                  ),
+                                ],
                               ),
                             ),
                           ),
+                        );
+                      },
                     ),
                   ),
             ),
